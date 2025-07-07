@@ -51,6 +51,14 @@ func main() {
 
 	fmt.Println("cells: ", cells)
 
+	// Exit if no valid data was parsed.
+	if len(cells) == 0 {
+		// exit the program
+		log.Fatal("No valid table data found.")
+	}
+
+	renderGridFromCells(cells)
+
 }
 
 // parseTableFromDoc parses the first HTML table in the provided goquery.Document,
@@ -100,4 +108,42 @@ func parseCharacterGridFromDoc(doc *goquery.Document) []Cell {
 	})
 
 	return cells
+}
+
+// renderGridFromCells takes a slice of Cell structs representing characters with X,Y coordinates,
+// builds a 2D grid of characters, and prints it to the console with the Y-axis flipped (bottom-to-top).
+//
+// @param cells []Cell - slice of Cell structs containing X, Y coordinates and character C to be placed.
+// @returns none (prints output directly to stdout).
+func renderGridFromCells(cells []Cell) {
+	// Determine max X and Y coordinates to define grid size
+	maxX, maxY := 0, 0
+	for _, c := range cells {
+		if c.X > maxX {
+			maxX = c.X
+		}
+		if c.Y > maxY {
+			maxY = c.Y
+		}
+	}
+
+	// Initialize 2D grid filled with spaces
+	grid := make([][]string, maxY+1)
+	for i := range grid {
+		grid[i] = make([]string, maxX+1)
+		for j := range grid[i] {
+			grid[i][j] = " "
+		}
+	}
+
+	// Place each character at its (X,Y) position in the grid
+	for _, c := range cells {
+		grid[c.Y][c.X] = c.C
+	}
+
+	// Print the grid from bottom (maxY) to top (0), trimming trailing spaces per line
+	for i := maxY; i >= 0; i-- {
+		line := strings.Join(grid[i], "")
+		fmt.Println(strings.TrimRight(line, " "))
+	}
 }
