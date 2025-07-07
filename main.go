@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -44,4 +46,58 @@ func main() {
 	// Debug print to verify the parsed document (can be removed later).
 	fmt.Println("document: ", doc)
 
+	// extract the grid structure from the Google Doc and store in a cell table structure
+	cells := parseCharacterGridFromDoc(doc)
+
+	fmt.Println("cells: ", cells)
+
+}
+
+// parseTableFromDoc parses the first HTML table in the provided goquery.Document,
+// extracting rows that contain three columns: x-coordinate, character, and y-coordinate.
+//
+// @param doc *goquery.Document - The parsed HTML document containing the table.
+// @returns []Cell - A slice of Cell structs representing characters positioned by their x and y coordinates.
+//
+// The function expects the table rows (except the header) to have exactly three columns:
+// - The first column is the x-coordinate (int).
+// - The second column is a character (string).
+// - The third column is the y-coordinate (int).
+//
+// Rows with invalid or missing data are skipped.
+// The returned slice can be used to reconstruct a character grid based on these coordinates.
+func parseCharacterGridFromDoc(doc *goquery.Document) []Cell {
+	var cells []Cell
+
+	// Find the first table in the document and iterate over its rows.
+	doc.Find("table").First().Find("tr").Each(func(i int, s *goquery.Selection) {
+		if i == 0 {
+			return // Skip the header row.
+		}
+
+		tds := s.Find("td")
+		if tds.Length() < 3 {
+			return // Skip if there aren't enough columns.
+		}
+
+		// Extract x-coordinate, character, and y-coordinate values.
+		xStr := strings.TrimSpace(tds.Eq(0).Text())
+		char := strings.TrimSpace(tds.Eq(1).Text())
+		yStr := strings.TrimSpace(tds.Eq(2).Text())
+
+		// Convert x and y to integers.
+		x, err1 := strconv.Atoi(xStr)
+		y, err2 := strconv.Atoi(yStr)
+
+		// Skip rows with invalid integer conversion.
+		if err1 != nil || err2 != nil {
+			log.Printf("Skipping invalid row: %v %v\n", xStr, yStr)
+			return
+		}
+
+		// Add the parsed cell to the list.
+		cells = append(cells, Cell{X: x, Y: y, C: char})
+	})
+
+	return cells
 }
